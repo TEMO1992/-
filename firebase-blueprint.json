@@ -1,0 +1,131 @@
+{
+  "entities": {
+    "Customer": {
+      "title": "Customer",
+      "description": "A customer with an e-wallet.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Customer's full name" },
+        "phone": { "type": "string", "description": "Customer's phone number" },
+        "type": { "type": "string", "enum": ["regular", "premium", "vip"], "description": "Customer type" },
+        "balance": { "type": "number", "description": "Current balance" },
+        "description": { "type": "string", "description": "Detailed customer description" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" }
+      },
+      "required": ["name", "phone", "type", "balance"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "A deposit or withdrawal transaction.",
+      "type": "object",
+      "properties": {
+        "customerId": { "type": "string", "description": "ID of the customer" },
+        "customerName": { "type": "string", "description": "Name of the customer" },
+        "type": { "type": "string", "enum": ["deposit", "withdrawal"], "description": "Transaction type" },
+        "amount": { "type": "number", "description": "Transaction amount" },
+        "walletNumber": { "type": "string", "description": "Associated wallet number" },
+        "timestamp": { "type": "string", "format": "date-time", "description": "Transaction time" },
+        "description": { "type": "string", "description": "Optional note" },
+        "previousBalance": { "type": "number", "description": "Balance before transaction" },
+        "newBalance": { "type": "number", "description": "Balance after transaction" }
+      },
+      "required": ["customerId", "customerName", "type", "amount", "walletNumber", "timestamp", "previousBalance", "newBalance"]
+    },
+    "Expense": {
+      "title": "Expense",
+      "description": "A business expense.",
+      "type": "object",
+      "properties": {
+        "amount": { "type": "number", "description": "Expense amount" },
+        "category": { "type": "string", "description": "Expense category" },
+        "description": { "type": "string", "description": "Expense description" },
+        "timestamp": { "type": "string", "format": "date-time", "description": "Expense time" }
+      },
+      "required": ["amount", "category", "timestamp"]
+    },
+    "Debt": {
+      "title": "Debt",
+      "description": "A debt or receivable.",
+      "type": "object",
+      "properties": {
+        "personName": { "type": "string", "description": "Name of the person" },
+        "amount": { "type": "number", "description": "Debt amount" },
+        "type": { "type": "string", "enum": ["owe", "owed"], "description": "Debt type" },
+        "description": { "type": "string", "description": "Debt description" },
+        "status": { "type": "string", "enum": ["pending", "paid"], "description": "Debt status" },
+        "timestamp": { "type": "string", "format": "date-time", "description": "Debt time" }
+      },
+      "required": ["personName", "amount", "type", "status", "timestamp"]
+    },
+    "WalletAccount": {
+      "title": "WalletAccount",
+      "description": "A business wallet account.",
+      "type": "object",
+      "properties": {
+        "provider": { "type": "string", "description": "Wallet provider" },
+        "walletNumber": { "type": "string", "description": "Wallet number" },
+        "serial": { "type": "string", "description": "Wallet serial number" },
+        "balance": { "type": "number", "description": "Current balance" },
+        "description": { "type": "string", "description": "Wallet description" }
+      },
+      "required": ["provider", "walletNumber", "serial", "balance"]
+    },
+    "Machine": {
+      "title": "Machine",
+      "description": "A payment machine (Fawry, Aman, etc.).",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Machine name" },
+        "terminalId": { "type": "string", "description": "Terminal ID" },
+        "balance": { "type": "number", "description": "Current balance" },
+        "description": { "type": "string", "description": "Machine description" }
+      },
+      "required": ["name", "terminalId", "balance"]
+    },
+    "AppUser": {
+      "title": "AppUser",
+      "description": "A system user with specific role and permissions.",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "description": "User's email" },
+        "username": { "type": "string", "description": "User's unique username" },
+        "password": { "type": "string", "description": "User's login password" },
+        "displayName": { "type": "string", "description": "User's display name" },
+        "role": { "type": "string", "enum": ["admin", "editor", "viewer"], "description": "User's role" },
+        "permissions": { "type": "array", "items": { "type": "string" }, "description": "List of permissions" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" }
+      },
+      "required": ["email", "username", "displayName", "role", "permissions", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/customers": {
+      "schema": "Customer",
+      "description": "Collection of e-wallet customers"
+    },
+    "/transactions": {
+      "schema": "Transaction",
+      "description": "Collection of all transactions"
+    },
+    "/expenses": {
+      "schema": "Expense",
+      "description": "Collection of business expenses"
+    },
+    "/debts": {
+      "schema": "Debt",
+      "description": "Collection of debts and receivables"
+    },
+    "/walletAccounts": {
+      "schema": "WalletAccount",
+      "description": "Collection of business wallet accounts"
+    },
+    "/machines": {
+      "schema": "Machine",
+      "description": "Collection of payment machines"
+    },
+    "/users": {
+      "schema": "AppUser",
+      "description": "Collection of system users"
+    }
+  }
+}

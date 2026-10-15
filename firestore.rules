@@ -1,0 +1,218 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: customers
+    // Fields:
+    //   - name: string (required, 1-100 chars)
+    //   - phone: string (required, 8-20 chars)
+    //   - type: string (required, 'regular', 'premium', 'vip')
+    //   - balance: number (required, >= 0)
+    //   - createdAt: timestamp (required)
+    //
+    // Collection: transactions
+    // Fields:
+    //   - customerId: string (required)
+    //   - customerName: string (required)
+    //   - type: string (required, 'deposit' or 'withdrawal')
+    //   - amount: number (required, > 0)
+    //   - walletNumber: string (required)
+    //   - timestamp: timestamp (required)
+    //   - description: string (optional)
+    //   - previousBalance: number (required)
+    //   - newBalance: number (required)
+    //
+    // Collection: expenses
+    // Fields:
+    //   - amount: number (required, > 0)
+    //   - category: string (required)
+    //   - description: string (optional)
+    //   - timestamp: timestamp (required)
+    //
+    // Collection: debts
+    // Fields:
+    //   - personName: string (required)
+    //   - amount: number (required, > 0)
+    //   - type: string (required, 'owe' or 'owed')
+    //   - description: string (optional)
+    //   - status: string (required, 'pending' or 'paid')
+    //   - timestamp: timestamp (required)
+    //
+    // Collection: walletAccounts
+    // Fields:
+    //   - provider: string (required)
+    //   - walletNumber: string (required)
+    //   - serial: string (required)
+    //   - balance: number (required)
+    //   - description: string (optional)
+    //
+    // Collection: machines
+    // Fields:
+    //   - name: string (required)
+    //   - terminalId: string (required)
+    //   - balance: number (required)
+    //   - description: string (optional)
+    //
+    // ===============================================================
+
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+         (request.auth.token.email == "tamerfawzyragheb@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function isValidCustomer(data) {
+      return data.name is string && data.name.size() >= 1 && data.name.size() <= 100 &&
+             data.phone is string && data.phone.size() >= 8 && data.phone.size() <= 20 &&
+             data.type in ['regular', 'premium', 'vip'] &&
+             data.balance is number &&
+             data.createdAt is timestamp &&
+             (!('description' in data) || data.description is string);
+    }
+
+    function isValidTransaction(data) {
+      return data.customerId is string &&
+             data.customerName is string &&
+             data.type in ['deposit', 'withdrawal'] &&
+             data.amount is number && data.amount > 0 &&
+             data.walletNumber is string &&
+             data.timestamp is timestamp &&
+             data.previousBalance is number &&
+             data.newBalance is number &&
+             (data.type == 'deposit' ? 
+               data.newBalance == data.previousBalance + data.amount :
+               data.newBalance == data.previousBalance - data.amount);
+    }
+
+    function isValidExpense(data) {
+      return data.amount is number && data.amount > 0 &&
+             data.category is string &&
+             data.timestamp is timestamp;
+    }
+
+    function isValidDebt(data) {
+      return data.personName is string &&
+             data.amount is number && data.amount > 0 &&
+             data.type in ['owe', 'owed'] &&
+             data.status in ['pending', 'paid'] &&
+             data.timestamp is timestamp;
+    }
+
+    function isValidWalletAccount(data) {
+      return data.provider is string &&
+             data.walletNumber is string &&
+             data.serial is string &&
+             data.balance is number;
+    }
+
+    function isValidMachine(data) {
+      return data.name is string &&
+             data.terminalId is string &&
+             data.balance is number;
+    }
+
+    function isValidCashCount(data) {
+      return data.counts is map &&
+             data.total is number && data.total >= 0 &&
+             data.timestamp is timestamp &&
+             (!('notes' in data) || data.notes is string);
+    }
+
+    function isValidUser(data) {
+      return data.email is string &&
+             data.username is string &&
+             data.displayName is string &&
+             data.role in ['admin', 'editor', 'viewer'] &&
+             data.permissions is list &&
+             data.createdAt is timestamp &&
+             (!('password' in data) || data.password is string);
+    }
+
+    // Rules
+    match /customers/{customerId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && 
+                      hasRequiredFields(['name', 'phone', 'type', 'balance', 'createdAt']) &&
+                      hasOnlyAllowedFields(['name', 'phone', 'type', 'balance', 'createdAt', 'description']) &&
+                      isValidCustomer(request.resource.data);
+      allow update: if isAuthenticated() && 
+                      isValidCustomer(request.resource.data) &&
+                      request.resource.data.createdAt == resource.data.createdAt;
+      allow delete: if isAdmin();
+    }
+
+    match /transactions/{transactionId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && 
+                      hasRequiredFields(['customerId', 'customerName', 'type', 'amount', 'walletNumber', 'timestamp', 'previousBalance', 'newBalance', 'description']) &&
+                      isValidTransaction(request.resource.data);
+      allow update: if false; // Transactions are immutable
+      allow delete: if isAdmin();
+    }
+
+    match /expenses/{expenseId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && 
+                      hasRequiredFields(['amount', 'category', 'timestamp', 'description']) &&
+                      isValidExpense(request.resource.data);
+      allow update: if isAuthenticated() && isValidExpense(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /debts/{debtId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && 
+                      hasRequiredFields(['personName', 'amount', 'type', 'status', 'timestamp', 'description']) &&
+                      isValidDebt(request.resource.data);
+      allow update: if isAuthenticated() && isValidDebt(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /walletAccounts/{walletId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && 
+                      hasRequiredFields(['provider', 'walletNumber', 'serial', 'balance', 'description']) &&
+                      isValidWalletAccount(request.resource.data);
+      allow update: if isAuthenticated() && isValidWalletAccount(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /machines/{machineId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && 
+                      hasRequiredFields(['name', 'terminalId', 'balance', 'description']) &&
+                      isValidMachine(request.resource.data);
+      allow update: if isAuthenticated() && isValidMachine(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /cashCounts/{countId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidCashCount(request.resource.data);
+      allow update, delete: if isAdmin();
+    }
+
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isAdmin() && isValidUser(request.resource.data);
+      allow update: if isAdmin() && isValidUser(request.resource.data);
+      allow delete: if isAdmin();
+    }
+  }
+}
